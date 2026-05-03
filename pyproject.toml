@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tugas-migrasi-on-premise-ke-cloud"
+version = "0.1.0"
+description = "IT inventory migration app"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "psycopg2-binary>=2.9.9",
+    "python-dotenv>=1.0.1",
+    "reportlab>=4.0.0",
+]
+
+[project.optional-dependencies]
+desktop = ["pywebview>=5.0"]
+
+[tool.setuptools]
+py-modules = ["app"]
