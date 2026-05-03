@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Inventory Manager</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <section id="loginView" class="login-view">
+      <div class="login-panel glass">
+        <div class="login-header">
+          <div class="eyebrow">Portable offline software</div>
+          <h1>IT Inventory Manager</h1>
+          <p class="muted">Secure access to your offline asset register, assignment history, and admin tools.</p>
+        </div>
+        <div class="login-pill-row" aria-hidden="true">
+          <span class="login-pill">Offline-first</span>
+          <span class="login-pill">Portable data</span>
+          <span class="login-pill">Admin controlled</span>
+        </div>
+        <form id="loginForm" class="stack gap-16">
+          <label>
+            <span>Username</span>
+            <input type="text" name="username" autocomplete="username" required>
+          </label>
+          <label class="password-field">
+            <span>Password</span>
+            <div class="password-input-wrap">
+              <input type="password" name="password" autocomplete="current-password" required>
+              <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" title="Show password">
+                <span class="password-toggle-icon" aria-hidden="true"></span>
+              </button>
+            </div>
+          </label>
+          <button type="submit" class="primary-btn">Sign in</button>
+        </form>
+        <div id="loginError" class="login-error hidden" role="alert"></div>
+      </div>
+      <div class="login-visual">
+        <div class="visual-card">
+          <div class="visual-kicker">Operations snapshot</div>
+          <p>Manage hardware, ownership, and admin access from one clean internal workspace.</p>
+          <div class="visual-grid">
+            <div class="visual-stat">
+              <strong>Assets</strong>
+              <span>Laptops, monitors, peripherals, and tracked stock.</span>
+            </div>
+            <div class="visual-stat">
+              <strong>Assignments</strong>
+              <span>See who has what, when it went out, and when it came back.</span>
+            </div>
+            <div class="visual-stat">
+              <strong>Admin Access</strong>
+              <span>Keep account creation inside the system instead of open sign-up.</span>
+            </div>
+            <div class="visual-stat">
+              <strong>Portable Reports</strong>
+              <span>Export clean CSV and PDF reports for handoff and audit use.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="appView" class="app-view hidden">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <div class="brand-mark">IT</div>
+          <div>
+            <div class="eyebrow">Asset operations</div>
+            <h2>Inventory Hub</h2>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <button class="nav-btn active" data-screen="dashboard">Dashboard</button>
+          <button class="nav-btn" data-screen="assets">Assets</button>
+          <button class="nav-btn" data-screen="people">Team Members</button>
+          <button class="nav-btn" data-screen="assignments">Assignments</button>
+          <button class="nav-btn" data-screen="admins">Accounts</button>
+        </nav>
+        <div class="sidebar-footer glass">
+          <p id="currentAdminName">System Administrator</p>
+          <button id="changePasswordBtn" class="ghost-btn full">Change Password</button>
+          <button id="logoutBtn" class="ghost-btn full">Log out</button>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <div class="eyebrow" id="screenEyebrow">Overview</div>
+            <h1 id="screenTitle">Dashboard</h1>
+          </div>
+          <div class="topbar-actions">
+            <button id="importBtn" class="ghost-btn">Import CSV</button>
+            <button id="exportCsvBtn" class="ghost-btn">Export CSV</button>
+            <button id="exportPdfBtn" class="ghost-btn">Export PDF</button>
+            <button id="refreshBtn" class="ghost-btn">Refresh</button>
+            <button id="primaryActionBtn" class="primary-btn">New Asset</button>
+          </div>
+        </header>
+
+        <div id="messageBar" class="message-bar hidden"></div>
+
+        <section id="dashboardScreen" class="screen"></section>
+        <section id="assetsScreen" class="screen hidden"></section>
+        <section id="peopleScreen" class="screen hidden"></section>
+        <section id="assignmentsScreen" class="screen hidden"></section>
+        <section id="adminsScreen" class="screen hidden"></section>
+        <div id="lookupLists"></div>
+      </main>
+    </section>
+  </div>
+
+  <div id="formDialog" class="modal hidden" role="dialog" aria-modal="true">
+    <form id="entityForm" class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow" id="dialogEyebrow">Create</div>
+          <h3 id="dialogTitle">Item</h3>
+        </div>
+        <button type="button" class="icon-btn" id="closeDialogBtn">x</button>
+      </div>
+      <div id="dialogFields" class="form-grid"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="cancelDialogBtn">Cancel</button>
+        <button type="submit" class="primary-btn">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="pickerDialog" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow" id="pickerEyebrow">Manage list</div>
+          <h3 id="pickerTitle">Records</h3>
+        </div>
+        <button type="button" class="icon-btn" id="closePickerBtn">x</button>
+      </div>
+      <div id="pickerBody" class="picker-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="pickerCloseActionBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <input id="importFileInput" type="file" accept=".csv,text/csv" class="hidden">
+  <script src="/app.js"></script>
+</body>
+</html>
