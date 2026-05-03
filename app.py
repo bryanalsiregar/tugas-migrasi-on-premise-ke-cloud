@@ -8,6 +8,7 @@ import os
 import secrets
 import threading
 import webbrowser
+from email.message import Message
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -53,6 +54,8 @@ SESSIONS: dict = {}
 SESSION_LOCK = threading.Lock()
 BROWSER_OPENED = False
 BROWSER_LOCK = threading.Lock()
+_DB_READY = False
+_DB_LOCK = threading.Lock()
 
 LOOKUP_FIELD_MAP = {
     "category":        ("assets", "category"),
@@ -233,6 +236,17 @@ def open_browser_once():
             return
         BROWSER_OPENED = True
     threading.Timer(1.0, lambda: webbrowser.open(app_url())).start()
+
+
+def ensure_db_ready():
+    global _DB_READY
+    if _DB_READY:
+        return
+    with _DB_LOCK:
+        if _DB_READY:
+            return
+        init_db()
+        _DB_READY = True
 
 
 # Sync Lookup with PostgreSQL
@@ -1595,7 +1609,90 @@ th{{background:#1f4e79;color:#fff}} tbody tr:nth-child(even){{background:#f5f8fc
         self.wfile.write(body)
 
 
+def _build_wsgi_path(environ):
+    path = environ.get("PATH_INFO", "/") or "/"
+    query = environ.get("QUERY_STRING")
+    if query:
+        return f"{path}?{query}"
+    return path
+
+
+def _build_wsgi_headers(environ):
+    headers = Message()
+    for key, value in environ.items():
+        if key.startswith("HTTP_"):
+            name = key[5:].replace("_", "-").title()
+            headers[name] = value
+    content_type = environ.get("CONTENT_TYPE")
+    if content_type:
+        headers["Content-Type"] = content_type
+    content_length = environ.get("CONTENT_LENGTH")
+    if content_length:
+        headers["Content-Length"] = content_length
+    return headers
+
+
+class WSGIInventoryHandler(InventoryHandler):
+    def __init__(self, environ, body):
+        self.environ = environ
+        self.rfile = io.BytesIO(body)
+        self.wfile = io.BytesIO()
+        self.headers = _build_wsgi_headers(environ)
+        self.command = environ.get("REQUEST_METHOD", "GET").upper()
+        self.path = _build_wsgi_path(environ)
+        self.client_address = (environ.get("REMOTE_ADDR", "127.0.0.1"), 0)
+        self.response_status = HTTPStatus.OK
+        self.response_reason = None
+        self.response_headers = []
+
+    def send_response(self, code, message=None):
+        self.response_status = HTTPStatus(code)
+        if message:
+            self.response_reason = message
+
+    def send_header(self, keyword, value):
+        self.response_headers.append((keyword, value))
+
+    def end_headers(self):
+        return
+
+
 # SERVER
+def main(environ=None, start_response=None):
+    if environ is None or start_response is None:
+        run_server(open_browser=True)
+        return None
+    ensure_db_ready()
+    body = b""
+    wsgi_input = environ.get("wsgi.input")
+    if wsgi_input:
+        body = wsgi_input.read() or b""
+
+    handler = WSGIInventoryHandler(environ, body)
+    try:
+        if handler.command == "GET":
+            handler.do_GET()
+        elif handler.command == "POST":
+            handler.do_POST()
+        elif handler.command == "PUT":
+            handler.do_PUT()
+        elif handler.command == "DELETE":
+            handler.do_DELETE()
+        else:
+            error_response(handler, "Method not allowed", HTTPStatus.METHOD_NOT_ALLOWED)
+    except Exception:
+        error_response(handler, "Internal server error", HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    status_code = int(handler.response_status)
+    reason = handler.response_reason or HTTPStatus(status_code).phrase
+    response_body = handler.wfile.getvalue()
+    headers = handler.response_headers
+    if not any(name.lower() == "content-length" for name, _ in headers):
+        headers.append(("Content-Length", str(len(response_body))))
+    start_response(f"{status_code} {reason}", headers)
+    return [response_body]
+
+
 def create_server():
     init_db()
     return ThreadingHTTPServer((HOST, PORT), InventoryHandler)
@@ -1615,8 +1712,8 @@ def run_server(open_browser=True):
         server.server_close()
 
 
-def main():
+def cli():
     run_server(open_browser=True)
 
 if __name__ == "__main__":
-    main()
+    cli()
