@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+
+data/
+data_test/
+portable_python/
+*.db
+*.db-journal
+
+.DS_Store
+Thumbs.db
+
+.env
+.env.*
+!.env.example

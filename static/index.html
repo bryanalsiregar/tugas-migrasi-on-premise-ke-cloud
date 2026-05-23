@@ -97,6 +97,7 @@
             <button id="importBtn" class="ghost-btn">Import CSV</button>
             <button id="exportCsvBtn" class="ghost-btn">Export CSV</button>
             <button id="exportPdfBtn" class="ghost-btn">Export PDF</button>
+            <button id="syncBtn" class="ghost-btn">Sync</button>
             <button id="refreshBtn" class="ghost-btn">Refresh</button>
             <button id="primaryActionBtn" class="primary-btn">New Asset</button>
           </div>
@@ -143,6 +144,33 @@
       <div id="pickerBody" class="picker-body"></div>
       <div class="modal-actions">
         <button type="button" class="ghost-btn" id="pickerCloseActionBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="syncDialog" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card sync-card">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">Manual sync</div>
+          <h3>SQLite to PostgreSQL</h3>
+        </div>
+        <button type="button" class="icon-btn" id="closeSyncBtn">x</button>
+      </div>
+      <div class="sync-body">
+        <p id="syncStepText" class="sync-step">Queued</p>
+        <div class="sync-progress-track" aria-hidden="true">
+          <div id="syncProgressFill" class="sync-progress-fill"></div>
+        </div>
+        <div class="sync-meta-row">
+          <strong id="syncPercentText">0%</strong>
+          <span id="syncRowsText" class="muted">0 / 0 rows</span>
+        </div>
+        <p id="syncMessageText" class="muted">Waiting to start.</p>
+        <p id="syncErrorText" class="sync-error hidden"></p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="syncCloseActionBtn">Close</button>
       </div>
     </div>
   </div>

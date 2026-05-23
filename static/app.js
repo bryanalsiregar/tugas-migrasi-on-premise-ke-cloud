@@ -11,6 +11,11 @@ const state = {
   activeLookupTargetField: null,
   activeLookupKind: null,
   lookupEditor: null,
+  sync: {
+    jobId: null,
+    running: false,
+    pollTimer: null,
+  },
   tableTools: {
     assets: { query: "", filter: "all", sort: "updated_desc" },
     people: { query: "", filter: "all", sort: "name_asc" },
@@ -45,6 +50,7 @@ const el = {
   importBtn: document.getElementById("importBtn"),
   exportCsvBtn: document.getElementById("exportCsvBtn"),
   exportPdfBtn: document.getElementById("exportPdfBtn"),
+  syncBtn: document.getElementById("syncBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
   primaryActionBtn: document.getElementById("primaryActionBtn"),
   importFileInput: document.getElementById("importFileInput"),
@@ -66,6 +72,15 @@ const el = {
   pickerBody: document.getElementById("pickerBody"),
   closePickerBtn: document.getElementById("closePickerBtn"),
   pickerCloseActionBtn: document.getElementById("pickerCloseActionBtn"),
+  syncDialog: document.getElementById("syncDialog"),
+  closeSyncBtn: document.getElementById("closeSyncBtn"),
+  syncCloseActionBtn: document.getElementById("syncCloseActionBtn"),
+  syncStepText: document.getElementById("syncStepText"),
+  syncProgressFill: document.getElementById("syncProgressFill"),
+  syncPercentText: document.getElementById("syncPercentText"),
+  syncRowsText: document.getElementById("syncRowsText"),
+  syncMessageText: document.getElementById("syncMessageText"),
+  syncErrorText: document.getElementById("syncErrorText"),
 };
 
 document.querySelectorAll(".nav-btn").forEach((button) => {
@@ -78,6 +93,7 @@ el.changePasswordBtn.addEventListener("click", openChangePasswordForm);
 el.importBtn.addEventListener("click", triggerImport);
 el.exportCsvBtn.addEventListener("click", exportCsv);
 el.exportPdfBtn.addEventListener("click", exportPdf);
+el.syncBtn.addEventListener("click", startManualSync);
 el.refreshBtn.addEventListener("click", () => loadAll());
 if (el.importFileInput) {
   el.importFileInput.addEventListener("change", handleImportFile);
@@ -86,9 +102,12 @@ el.closeDialogBtn.addEventListener("click", closeEntityModal);
 el.cancelDialogBtn.addEventListener("click", closeEntityModal);
 el.closePickerBtn.addEventListener("click", closePickerModal);
 el.pickerCloseActionBtn.addEventListener("click", closePickerModal);
+el.closeSyncBtn.addEventListener("click", closeSyncModal);
+el.syncCloseActionBtn.addEventListener("click", closeSyncModal);
 el.entityForm.addEventListener("submit", submitModal);
 el.formDialog.addEventListener("click", handleDialogBackdropClick);
 el.pickerDialog.addEventListener("click", handleDialogBackdropClick);
+el.syncDialog.addEventListener("click", handleDialogBackdropClick);
 document.addEventListener("click", handlePasswordToggle);
 document.addEventListener("keydown", handleGlobalEscape);
 
@@ -139,8 +158,13 @@ async function handleLogin(event) {
 }
 
 async function logout() {
+  stopSyncPolling();
   await api("/api/logout", { method: "POST" });
   state.currentUser = null;
+  state.sync.jobId = null;
+  state.sync.running = false;
+  resetSyncModalUi();
+  setSyncButtonState();
   showLogin();
 }
 
@@ -158,6 +182,7 @@ function showApp() {
   if (adminNavButton) {
     adminNavButton.classList.toggle("hidden", !canManageAccounts());
   }
+  setSyncButtonState();
   setScreen(state.currentScreen);
 }
 
@@ -188,6 +213,7 @@ function setScreen(name) {
   el.importBtn.classList.toggle("hidden", !importable);
   el.exportCsvBtn.classList.toggle("hidden", !exportable);
   el.exportPdfBtn.classList.toggle("hidden", !exportable);
+  setSyncButtonState();
   el.primaryActionBtn.classList.toggle("hidden", name === "admins" && !canManageAccounts());
 }
 
@@ -755,6 +781,114 @@ function flash(message, isError = false) {
   flash._timer = setTimeout(() => el.messageBar.classList.add("hidden"), 3200);
 }
 
+function setSyncButtonState() {
+  const allowed = canManageAccounts();
+  el.syncBtn.classList.toggle("hidden", !allowed);
+  el.syncBtn.disabled = !allowed || state.sync.running;
+  el.syncBtn.textContent = state.sync.running ? "Syncing..." : "Sync";
+}
+
+function openSyncModal() {
+  el.syncDialog.classList.remove("hidden");
+}
+
+function closeSyncModal() {
+  el.syncDialog.classList.add("hidden");
+}
+
+function resetSyncModalUi() {
+  el.syncStepText.textContent = "Queued";
+  el.syncProgressFill.style.width = "0%";
+  el.syncPercentText.textContent = "0%";
+  el.syncRowsText.textContent = "0 / 0 rows";
+  el.syncMessageText.textContent = "Waiting to start.";
+  el.syncErrorText.textContent = "";
+  el.syncErrorText.classList.add("hidden");
+}
+
+function applySyncStatus(status) {
+  const percent = Math.max(0, Math.min(100, Number(status.percent || 0)));
+  const processed = Number(status.processed_rows || 0);
+  const total = Number(status.total_rows || 0);
+  el.syncStepText.textContent = status.step || status.state || "Running";
+  el.syncProgressFill.style.width = `${percent}%`;
+  el.syncPercentText.textContent = `${percent}%`;
+  el.syncRowsText.textContent = `${processed} / ${total} rows`;
+  el.syncMessageText.textContent = status.message || "";
+  if (status.error) {
+    el.syncErrorText.textContent = status.error;
+    el.syncErrorText.classList.remove("hidden");
+  } else {
+    el.syncErrorText.textContent = "";
+    el.syncErrorText.classList.add("hidden");
+  }
+}
+
+function stopSyncPolling() {
+  if (state.sync.pollTimer) {
+    clearTimeout(state.sync.pollTimer);
+    state.sync.pollTimer = null;
+  }
+}
+
+async function startManualSync() {
+  if (!canManageAccounts()) {
+    flash("Admin access required.", true);
+    return;
+  }
+  if (state.sync.running) {
+    openSyncModal();
+    return;
+  }
+  resetSyncModalUi();
+  openSyncModal();
+  try {
+    const result = await api("/api/sync/start", { method: "POST" });
+    state.sync.jobId = result.job_id;
+    state.sync.running = true;
+    setSyncButtonState();
+    await pollSyncStatus();
+  } catch (error) {
+    state.sync.running = false;
+    setSyncButtonState();
+    el.syncErrorText.textContent = error.message || "Sync failed to start";
+    el.syncErrorText.classList.remove("hidden");
+    flash(error.message, true);
+  }
+}
+
+async function pollSyncStatus() {
+  if (!state.sync.jobId) return;
+  try {
+    const status = await api(`/api/sync/status?job_id=${encodeURIComponent(state.sync.jobId)}`);
+    applySyncStatus(status);
+    if (status.state === "queued" || status.state === "running") {
+      state.sync.running = true;
+      setSyncButtonState();
+      stopSyncPolling();
+      state.sync.pollTimer = setTimeout(() => {
+        pollSyncStatus();
+      }, 900);
+      return;
+    }
+    state.sync.running = false;
+    stopSyncPolling();
+    setSyncButtonState();
+    if (status.state === "success") {
+      flash("Sync completed successfully.");
+    } else if (status.state === "failed") {
+      flash(status.error || "Sync failed.", true);
+    }
+  } catch (error) {
+    state.sync.running = false;
+    stopSyncPolling();
+    setSyncButtonState();
+    el.syncErrorText.textContent = error.message || "Could not fetch sync status";
+    el.syncErrorText.classList.remove("hidden");
+    flash(error.message, true);
+  }
+}
+
 function closeEntityModal() {
   state.modal = null;
   el.formDialog.classList.add("hidden");
@@ -772,6 +906,8 @@ function handleDialogBackdropClick(event) {
     closeEntityModal();
   } else if (event.currentTarget === el.pickerDialog) {
     closePickerModal();
+  } else if (event.currentTarget === el.syncDialog) {
+    closeSyncModal();
   }
 }
 
@@ -781,6 +917,8 @@ function handleGlobalEscape(event) {
     closeEntityModal();
   } else if (!el.pickerDialog.classList.contains("hidden")) {
     closePickerModal();
+  } else if (!el.syncDialog.classList.contains("hidden")) {
+    closeSyncModal();
   }
 }
 
