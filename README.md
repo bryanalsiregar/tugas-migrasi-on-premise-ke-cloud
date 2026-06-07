@@ -12,26 +12,35 @@ Disclaimer: Aplikasi yang dimigrasi adalah aplikasi web sehingga gunakan aplikas
 
 Prerequisites:
 1. Python 3
+2. git
 
 Langkah-langkah menjalankan aplikasi yang sudah dimigrasi:
 
-1. Lakukan cp .env.example .env
+1. Lakukan clone repositori ini
+
+Jalankan `git clone https://github.com/bryanalsiregar/tugas-migrasi-on-premise-ke-cloud.git`
+
+2. Pergi ke folder clone
+
+Jalankan `cd tugas-migrasi-on-premise-ke-cloud`
+
+3. Lakukan cp .env.example .env
 
 Terdapat sebuah _environment key_ bernama `IT_INVENTORY_PG_URL` yang harus diisi dengan PostgreSQL.
 
-2. Buat virtual environments
+4. Buat virtual environments
 
 Jalankan `python -m venv .venv` dan akses virtual environment
 
-3. Install packages yang dibutuhkan
+5. Install packages yang dibutuhkan
 
 Jalankan `pip install -r requirements.txt`
 
-4. Jalankan aplikasi
+6. Jalankan aplikasi
 
 Jalankan `python app.py`
 
-5. Akses aplikasi di sini
+7. Akses aplikasi di sini
 
 Buka browser dan ketikkan: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
