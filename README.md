@@ -36,5 +36,7 @@ Jalankan `python app.py`
 Buka browser dan ketikkan: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
 Gunakan credential default sebagai berikut:
+
 *username*: admin
+
 *password*: admin
