@@ -13,6 +13,7 @@ Disclaimer: Aplikasi yang dimigrasi adalah aplikasi web sehingga gunakan aplikas
 Prerequisites:
 1. Python 3
 2. git
+3. PostgreSQL URI
 
 Langkah-langkah menjalankan aplikasi yang sudah dimigrasi:
 
